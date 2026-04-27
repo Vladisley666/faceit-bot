@@ -1,0 +1,6 @@
+.env 
+faceit_users.db 
+__pycache__/ 
+.venv/ 
+venv/ 
+.idea/ 

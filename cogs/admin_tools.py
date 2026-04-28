@@ -16,11 +16,10 @@ class AdminToolsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # ------------------------------------------------------------
-    # ОСНОВНЫЕ КОМАНДЫ
-    # ------------------------------------------------------------
-    @app_commands.command(name="ban", description="Забанить пользователя (только для админов)")
+    # --- Базовые админ-команды (видны только администраторам сервера) ---
+    @app_commands.command(name="ban", description="[АДМИН] Забанить пользователя (бот выдаст Unverified и удалит роли)")
     @app_commands.describe(member="Пользователь для бана", reason="Причина бана")
+    @app_commands.default_permissions(administrator=True)
     async def slash_ban(self, interaction: discord.Interaction, member: discord.Member, reason: str = "Не указана"):
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Нет прав", ephemeral=True)
@@ -43,8 +42,9 @@ class AdminToolsCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
         log_admin_action(interaction.user.id, "ban", member.id, reason)
 
-    @app_commands.command(name="unban", description="Разбанить пользователя (только для админов)")
-    @app_commands.describe(discord_id="ID пользователя для разбана")
+    @app_commands.command(name="unban", description="[АДМИН] Разбанить пользователя по его Discord ID")
+    @app_commands.describe(discord_id="ID пользователя (можно скопировать через контекстное меню)")
+    @app_commands.default_permissions(administrator=True)
     async def slash_unban(self, interaction: discord.Interaction, discord_id: str):
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Нет прав", ephemeral=True)
@@ -61,7 +61,8 @@ class AdminToolsCog(commands.Cog):
         await interaction.response.send_message(f"✅ Пользователь с ID {user_id} разбанен")
         log_admin_action(interaction.user.id, "unban", user_id, "")
 
-    @app_commands.command(name="banlist", description="Показать список забаненных")
+    @app_commands.command(name="banlist", description="[АДМИН] Показать список забаненных пользователей")
+    @app_commands.default_permissions(administrator=True)
     async def slash_banlist(self, interaction: discord.Interaction):
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Нет прав", ephemeral=True)
@@ -78,8 +79,9 @@ class AdminToolsCog(commands.Cog):
         embed.add_field(name="Забаненные", value=ban_text, inline=False)
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="logs", description="[АДМИН] Показать логи действий")
-    @app_commands.describe(user="Показать логи только для этого админа", limit="Количество записей (до 50)")
+    @app_commands.command(name="logs", description="[АДМИН] Показать логи действий администраторов")
+    @app_commands.describe(user="Фильтр по администратору", limit="Количество записей (до 50)")
+    @app_commands.default_permissions(administrator=True)
     async def slash_logs(self, interaction: discord.Interaction, user: discord.User = None, limit: int = 10):
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Только для админов!", ephemeral=True)
@@ -113,68 +115,77 @@ class AdminToolsCog(commands.Cog):
             )
         await interaction.response.send_message(embed=embed)
 
-    # ------------------------------------------------------------
-    # НОВАЯ КОМАНДА /stop
-    # ------------------------------------------------------------
-    @app_commands.command(name="stop", description="[АДМИН] Остановить бота")
-    async def slash_stop(self, interaction: discord.Interaction):
-        if interaction.user.id not in MAIN_ADMIN_IDS:
-            await interaction.response.send_message("❌ Нет прав", ephemeral=True)
-            return
-        await interaction.response.send_message("🛑 Бот отключается...", ephemeral=True)
-        await self.bot.close()
-
-    # ------------------------------------------------------------
-    # ЗАГЛУШКИ ДЛЯ ОСТАЛЬНЫХ АДМИН-КОМАНД (можно потом дописать)
-    # ------------------------------------------------------------
-    @app_commands.command(name="setup_channel", description="Настроить канал для тиммейтов (только в ЛС)")
+    # --- Команды настройки канала и ролей (тоже админские) ---
+    @app_commands.command(name="setup_channel", description="[АДМИН] Настроить канал для LFT-событий (работает в ЛС)")
     @in_dm_only()
+    @app_commands.default_permissions(administrator=True)
     async def setup_channel(self, interaction: discord.Interaction):
+        # Здесь будет полная логика выбора сервера и канала
         await interaction.response.send_message("Команда в разработке. Используйте старую версию бота для настройки.", ephemeral=True)
 
-    @app_commands.command(name="check_bot_position", description="Проверить позицию роли бота")
+    @app_commands.command(name="check_bot_position", description="[АДМИН] Проверить, выше ли роль бота, чем Verified/Unverified")
+    @app_commands.default_permissions(administrator=True)
     async def check_bot_position(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="fix_bot_role", description="Поднять роль бота")
+    @app_commands.command(name="fix_bot_role", description="[АДМИН] Поднять роль бота выше Verified/Unverified")
+    @app_commands.default_permissions(administrator=True)
     async def fix_bot_role(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="force_unverified", description="Выдать Unverified всем")
+    @app_commands.command(name="force_unverified", description="[АДМИН] Выдать роль Unverified всем участникам (кроме админов)")
+    @app_commands.default_permissions(administrator=True)
     async def force_unverified(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="cleanup_old_roles", description="Удалить пустые роли бота")
+    @app_commands.command(name="cleanup_old_roles", description="[АДМИН] Удалить пустые роли бота (без участников)")
+    @app_commands.default_permissions(administrator=True)
     async def cleanup_old_roles(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="force_delete_all_roles", description="Удалить ВСЕ роли бота")
+    @app_commands.command(name="force_delete_all_roles", description="[АДМИН] Полностью удалить все роли, созданные ботом")
+    @app_commands.default_permissions(administrator=True)
     async def force_delete_all_roles(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="remove_all_bot_roles_from_users", description="Снять все роли бота с участников")
+    @app_commands.command(name="remove_all_bot_roles_from_users", description="[АДМИН] Снять с участников все роли бота")
+    @app_commands.default_permissions(administrator=True)
     async def remove_all_bot_roles_from_users(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="check_configs", description="Показать все настроенные каналы")
+    @app_commands.command(name="check_configs", description="[АДМИН] Показать все серверы, где настроен канал для LFT")
+    @app_commands.default_permissions(administrator=True)
     async def check_configs(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="check_server", description="Проверить настройки сервера по ID")
+    @app_commands.command(name="check_server", description="[АДМИН] Проверить настройки конкретного сервера по ID")
+    @app_commands.default_permissions(administrator=True)
     async def check_server(self, interaction: discord.Interaction, guild_id: str):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="sync_roles", description="Синхронизировать роли карт на всех серверах")
+    @app_commands.command(name="sync_roles", description="[АДМИН] Создать недостающие роли карт на всех серверах")
+    @app_commands.default_permissions(administrator=True)
     async def sync_roles(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="sync_achievement_roles", description="Создать роли достижений на всех серверах")
+    @app_commands.command(name="sync_achievement_roles", description="[АДМИН] Создать роли достижений на всех серверах")
+    @app_commands.default_permissions(administrator=True)
     async def sync_achievement_roles(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
 
-    @app_commands.command(name="sync_all_roles", description="Создать ВСЕ роли бота на всех серверах")
+    @app_commands.command(name="sync_all_roles", description="[АДМИН] Создать все роли бота на всех серверах")
+    @app_commands.default_permissions(administrator=True)
     async def sync_all_roles(self, interaction: discord.Interaction):
         await interaction.response.send_message("Команда в разработке.", ephemeral=True)
+
+    # --- Команды главного администратора (проверка по ID) ---
+    @app_commands.command(name="stop", description="[ГЛАВНЫЙ АДМИН] Остановить бота (только для владельца)")
+    async def slash_stop(self, interaction: discord.Interaction):
+        if interaction.user.id not in MAIN_ADMIN_IDS:
+            await interaction.response.send_message("❌ Эта команда доступна только создателю бота.", ephemeral=True)
+            return
+        await interaction.response.send_message("🛑 Бот отключается...", ephemeral=True)
+        await self.bot.close()
 
 async def setup(bot):
     await bot.add_cog(AdminToolsCog(bot))

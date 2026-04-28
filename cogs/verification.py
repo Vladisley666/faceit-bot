@@ -14,13 +14,12 @@ from utils.helpers import (
     can_update, save_update_time, is_data_stale
 )
 from database.db_manager import c, conn
-from database.users import is_banned, ban_user, get_ban_info
-from database.server_config import get_server_config
+from database.users import is_banned
 from utils.role_colors import get_role_color
-from config import FACEIT_ROLES, AVG_KILLS_ROLES, KD_ROLES, MAP_ROLES, get_all_bot_roles
+from config import FACEIT_ROLES, AVG_KILLS_ROLES, KD_ROLES, MAP_ROLES
 
 # ----------------------------------------------------------------------
-# Функция обновления ролей пользователя
+# Функция обновления ролей пользователя (полная версия)
 # ----------------------------------------------------------------------
 async def update_user_role(member, faceit_nickname):
     await asyncio.sleep(2)
@@ -45,6 +44,7 @@ async def update_user_role(member, faceit_nickname):
                       list(KD_ROLES.values()) +
                       list(MAP_ROLES.values()))
 
+    # Удаляем старые роли бота
     for old_role in member.roles:
         if old_role.name in all_role_names:
             try:
@@ -54,7 +54,7 @@ async def update_user_role(member, faceit_nickname):
 
     roles_added = []
 
-    # Level
+    # Уровень
     level_role_name = FACEIT_ROLES.get(player_level)
     if level_role_name:
         level_role = discord.utils.get(member.guild.roles, name=level_role_name)
@@ -167,7 +167,7 @@ async def update_user_role(member, faceit_nickname):
             except:
                 pass
 
-        # Map
+        # Карта
         favorite_map = stats.get('favorite_map', 'Unknown')
         if favorite_map in MAP_ROLES:
             map_role_name = MAP_ROLES[favorite_map]
@@ -188,6 +188,7 @@ async def update_user_role(member, faceit_nickname):
                 except:
                     pass
 
+    # Сохраняем в БД
     save_user_faceit(
         member.id,
         faceit_nickname,
@@ -209,6 +210,7 @@ async def update_user_role(member, faceit_nickname):
 # Синхронизация пользователя по всем серверам
 # ----------------------------------------------------------------------
 async def sync_user_across_servers(bot, user_id: int, faceit_nickname: str):
+    from database.server_config import get_server_config
     print(f"\n🔄 Синхронизация {user_id} ({faceit_nickname})...")
     for guild in bot.guilds:
         member = guild.get_member(user_id)
@@ -233,14 +235,17 @@ async def sync_user_across_servers(bot, user_id: int, faceit_nickname: str):
                 print(f"   ❌ Ошибка на {guild.name}: {result}")
 
 # ----------------------------------------------------------------------
-# Cog верификации
+# Ког верификации
 # ----------------------------------------------------------------------
 class VerificationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="verify", description="Привязать Faceit профиль (только в ЛС)")
-    @app_commands.describe(faceit_nick="Твой никнейм на Faceit", steam_id="Твой Steam ID (17 цифр)")
+    @app_commands.command(name="verify", description="[ТОЛЬКО ЛС] Привязать Faceit профиль к Discord аккаунту")
+    @app_commands.describe(
+        faceit_nick="Твой никнейм на Faceit",
+        steam_id="Твой Steam ID (17 цифр, из ссылки профиля)"
+    )
     @in_dm_only()
     async def slash_verify(self, interaction: discord.Interaction, faceit_nick: str, steam_id: str):
         if is_banned(interaction.user.id):
@@ -269,6 +274,11 @@ class VerificationCog(commands.Cog):
             await interaction.followup.send("❌ Неверный Steam ID. Должно быть 17 цифр")
             return
 
+        success, check_error = await check_steam_summary(steam_id, "")
+        if not success and "не найден" in check_error:
+            await interaction.followup.send(f"❌ Steam профиль с ID `{steam_id}` не найден.")
+            return
+
         code = save_verify_code(interaction.user.id, faceit_nick, steam_id)
 
         embed = discord.Embed(
@@ -286,8 +296,8 @@ class VerificationCog(commands.Cog):
         )
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="confirm", description="Подтвердить код из Steam")
-    @app_commands.describe(code="Код из поля Real Name")
+    @app_commands.command(name="confirm", description="[ТОЛЬКО ЛС] Подтвердить код из Steam (после /verify)")
+    @app_commands.describe(code="Код из поля Real Name вашего Steam профиля")
     @in_dm_only()
     async def slash_confirm(self, interaction: discord.Interaction, code: str):
         if is_banned(interaction.user.id):
@@ -327,8 +337,8 @@ class VerificationCog(commands.Cog):
         )
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="refresh", description="Обновить информацию о Faceit профиле")
-    @app_commands.describe(nickname="Никнейм на Faceit (если не указан, использует сохранённый)")
+    @app_commands.command(name="refresh", description="[ТОЛЬКО НА СЕРВЕРЕ] Обновить статистику Faceit и выдать актуальные роли")
+    @app_commands.describe(nickname="Никнейм на Faceit (оставьте пустым, чтобы использовать сохранённый)")
     @in_guild_only()
     async def slash_refresh(self, interaction: discord.Interaction, nickname: str = None):
         if is_banned(interaction.user.id):
@@ -344,7 +354,7 @@ class VerificationCog(commands.Cog):
             if old_nick:
                 nickname = old_nick
             else:
-                await interaction.followup.send("❌ Нет привязанного профиля. Используй `/verify` в ЛС")
+                await interaction.followup.send("❌ У тебя нет привязанного профиля. Используй `/verify` в ЛС")
                 return
 
         if old_nick and old_nick.lower() != nickname.lower():

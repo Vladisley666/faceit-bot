@@ -8,7 +8,7 @@ class AchievementsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="achievements", description="Показать полученные достижения")
+    @app_commands.command(name="achievements", description="Показать список полученных достижений. Достижения даются за активность на сервере.")
     async def achievements(self, interaction: discord.Interaction):
         if is_banned(interaction.user.id):
             await interaction.response.send_message("🚫 Вы забанены", ephemeral=True)

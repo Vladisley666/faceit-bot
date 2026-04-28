@@ -63,7 +63,7 @@ class StatsCommandsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="info", description="Показывает подробную статистику игрока")
+    @app_commands.command(name="info", description="Показать подробную статистику любого игрока (работает везде)")
     @app_commands.describe(nickname="Никнейм на Faceit")
     async def slash_info(self, interaction: discord.Interaction, nickname: str):
         if is_banned(interaction.user.id):
@@ -87,7 +87,7 @@ class StatsCommandsCog(commands.Cog):
         embed.add_field(name="🗺️ Любимая карта", value=f"**{stats['favorite_map']}**", inline=True)
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="faceit", description="Показать базовую информацию о Faceit профиле")
+    @app_commands.command(name="faceit", description="Показать базовую информацию (уровень, ELO) игрока Faceit")
     @app_commands.describe(nickname="Никнейм на Faceit")
     async def slash_faceit(self, interaction: discord.Interaction, nickname: str):
         if is_banned(interaction.user.id):
@@ -114,8 +114,8 @@ class StatsCommandsCog(commands.Cog):
         except KeyError:
             await interaction.followup.send("❌ Ошибка в данных Faceit (возможно нет CS2 профиля)")
 
-    @app_commands.command(name="stats", description="Показать статистику игрока или выбрать из списка")
-    @app_commands.describe(nickname="Никнейм на Faceit (оставь пустым для выбора из списка)")
+    @app_commands.command(name="stats", description="Показать детальную статистику игрока. Без ника — выбор из списка верифицированных")
+    @app_commands.describe(nickname="Никнейм на Faceit (необязательно)")
     async def slash_stats(self, interaction: discord.Interaction, nickname: str = None):
         if is_banned(interaction.user.id):
             await interaction.response.send_message("🚫 Вы забанены", ephemeral=True)
@@ -152,7 +152,8 @@ class StatsCommandsCog(commands.Cog):
         view = PlayerView(players)
         await interaction.response.send_message(embed=embed, view=view)
 
-    @app_commands.command(name="myroles", description="Показать твои текущие роли на сервере")
+    @app_commands.command(name="myroles", description="[ТОЛЬКО НА СЕРВЕРЕ] Показать все ваши роли на этом сервере")
+    @in_guild_only()
     async def slash_myroles(self, interaction: discord.Interaction):
         if is_banned(interaction.user.id):
             await interaction.response.send_message("🚫 Вы забанены", ephemeral=True)
@@ -163,7 +164,7 @@ class StatsCommandsCog(commands.Cog):
         else:
             await interaction.response.send_message("📋 У тебя нет ролей на этом сервере.")
 
-    @app_commands.command(name="help", description="Показать список доступных команд")
+    @app_commands.command(name="help", description="Показать список всех команд бота")
     async def slash_help(self, interaction: discord.Interaction):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         embed = discord.Embed(

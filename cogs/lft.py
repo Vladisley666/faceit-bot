@@ -14,11 +14,11 @@ class LftCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="lft", description="Создать событие для поиска тиммейтов")
+    @app_commands.command(name="lft", description="[ТОЛЬКО НА СЕРВЕРЕ] Создать событие для поиска тиммейтов (Looking for team)")
     @app_commands.describe(
-        time="Время (например: 20:00)",
-        maps="Карты через запятую (например: Mirage,Inferno)",
-        description="Описание (например: нужен эйм)",
+        time="Время в формате ЧЧ:ММ (например 20:00)",
+        maps="Карты через запятую (Mirage,Inferno)",
+        description="Краткое описание, кого ищете",
         role="Требуемая роль (эймер, саппорт и т.д.)"
     )
     async def slash_lft(self, interaction: discord.Interaction, time: str, maps: str, description: str = "", role: str = ""):
@@ -167,8 +167,8 @@ class LftCog(commands.Cog):
 
         asyncio.create_task(event_timer())
 
-    @app_commands.command(name="rating", description="Показать рейтинг надежности игрока")
-    @app_commands.describe(user="Пользователь (опционально)")
+    @app_commands.command(name="rating", description="Показать рейтинг надёжности игрока (участие в LFT-событиях)")
+    @app_commands.describe(user="Пользователь (если не указан, показывает свой рейтинг)")
     async def slash_rating(self, interaction: discord.Interaction, user: discord.Member = None):
         target = user or interaction.user
 

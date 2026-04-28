@@ -36,8 +36,8 @@ def subscript(text):
 def square_letters(text):
     mapping = {}
     for ch in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz':
-        mapping[ch] = f'🄰'  # упрощённо, в реальности используй полный словарь из старого кода
-    return text  # Заглушка, для работы нужно добавить полное преобразование
+        mapping[ch] = f'🄰'  # упрощённо, для реальной работы замени на полный словарь
+    return text
 
 def circle_letters(text): return text
 def double_letters(text): return text
@@ -71,7 +71,8 @@ class ShopCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="balance", description="Показать баланс монет")
+    @app_commands.command(name="balance", description="Показать баланс монет (валюты для покупки стилей ника)")
+    @app_commands.describe(user="Пользователь, чей баланс показать (по умолчанию свой)")
     async def balance(self, interaction: discord.Interaction, user: discord.User = None):
         target = user or interaction.user
         coins = get_coins(target.id)
@@ -81,7 +82,7 @@ class ShopCog(commands.Cog):
             embed.add_field(name="🎨 Купленные стили", value=", ".join(owned[:5]), inline=False)
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="daily", description="Получить ежедневный бонус")
+    @app_commands.command(name="daily", description="Получить ежедневный бонус (100 монет). Можно раз в 24 часа.")
     async def daily(self, interaction: discord.Interaction):
         c.execute('SELECT last_daily FROM user_coins WHERE user_id = ?', (interaction.user.id,))
         result = c.fetchone()
@@ -98,7 +99,7 @@ class ShopCog(commands.Cog):
         conn.commit()
         await interaction.response.send_message(f"💰 Вы получили **100** монет! Баланс: **{get_coins(interaction.user.id)}**", ephemeral=True)
 
-    @app_commands.command(name="shop", description="Показать магазин стилей")
+    @app_commands.command(name="shop", description="Показать магазин стилей для ника. Стили меняют отображение ника на сервере.")
     async def shop(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="🛒 Магазин стилей",
@@ -113,8 +114,8 @@ class ShopCog(commands.Cog):
         embed.set_footer(text="Используй /buy_style <название> для покупки")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="buy_style", description="Купить стиль для ника")
-    @app_commands.describe(style="Название стиля")
+    @app_commands.command(name="buy_style", description="[ТОЛЬКО НА СЕРВЕРЕ] Купить стиль ника за монеты и сразу применить.")
+    @app_commands.describe(style="Название стиля (из магазина)")
     async def buy_style(self, interaction: discord.Interaction, style: str):
         if not interaction.guild:
             await interaction.response.send_message("❌ Эту команду можно использовать только на сервере!", ephemeral=True)
@@ -177,7 +178,7 @@ class ShopCog(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"❌ Ошибка: {e}", ephemeral=True)
 
-    @app_commands.command(name="styles", description="Показать купленные стили")
+    @app_commands.command(name="styles", description="Показать список купленных стилей и текущий активный стиль.")
     async def styles(self, interaction: discord.Interaction):
         owned = get_owned_styles(interaction.user.id)
         current_style = get_equipped_style(interaction.user.id)
@@ -198,7 +199,7 @@ class ShopCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="reset_nick", description="Сбросить ник к исходному")
+    @app_commands.command(name="reset_nick", description="[ТОЛЬКО НА СЕРВЕРЕ] Сбросить стиль ника к исходному Faceit-нику.")
     async def reset_nick(self, interaction: discord.Interaction):
         if not interaction.guild:
             await interaction.response.send_message("❌ Эту команду можно использовать только на сервере!", ephemeral=True)
